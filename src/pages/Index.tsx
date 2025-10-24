@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { LevelCard } from '@/components/LevelCard';
 import { SkinCard } from '@/components/SkinCard';
 import { GameCanvas } from '@/components/GameCanvas';
+import { AuthModal } from '@/components/AuthModal';
 import Icon from '@/components/ui/icon';
 
 const INITIAL_LEVELS = [
@@ -90,15 +91,77 @@ const Index = () => {
     { id: 104, name: 'Комната загадок', difficulty: 1, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'NoobMaster', objects: [] },
     { id: 105, name: 'Подземелье', difficulty: 2, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'DarkKnight', objects: [] },
   ]);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('user_id');
+    const storedUsername = localStorage.getItem('username');
+    if (storedUserId && storedUsername) {
+      setUserId(parseInt(storedUserId));
+      setUsername(storedUsername);
+      loadProgress(parseInt(storedUserId));
+    }
+  }, []);
+
+  const loadProgress = async (uid: number) => {
+    try {
+      const response = await fetch('https://functions.poehali.dev/39c924ad-9456-485a-9e5a-3a32e2185c4d', {
+        headers: { 'X-User-Id': uid.toString() },
+      });
+      const data = await response.json();
+      if (data.progress) {
+        setLevels((prev) =>
+          prev.map((level) => {
+            const progress = data.progress.find((p: any) => p.level_id === level.id);
+            return progress ? { ...level, completed: progress.completed } : level;
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Failed to load progress', err);
+    }
+  };
+
+  const handleLogin = (uid: number, uname: string) => {
+    setUserId(uid);
+    setUsername(uname);
+    loadProgress(uid);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
+    setUserId(null);
+    setUsername(null);
+    setLevels(INITIAL_LEVELS);
+  };
 
   const handlePlayLevel = (levelId: number) => {
     setCurrentLevel(levelId);
     setActiveTab('game');
   };
 
-  const handleLevelComplete = () => {
+  const handleLevelComplete = async () => {
     if (currentLevel) {
       setLevels((prev) => prev.map((level) => (level.id === currentLevel ? { ...level, completed: true } : level)));
+      
+      if (userId) {
+        try {
+          await fetch('https://functions.poehali.dev/39c924ad-9456-485a-9e5a-3a32e2185c4d', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-Id': userId.toString(),
+            },
+            body: JSON.stringify({ action: 'complete_level', level_id: currentLevel }),
+          });
+        } catch (err) {
+          console.error('Failed to save progress', err);
+        }
+      }
+      
       setCurrentLevel(null);
       setActiveTab('menu');
     }
@@ -159,7 +222,23 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-black mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ESCAPE ROOMS</h1>
+          <div className="flex justify-end mb-4">
+            {userId ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">👤 {username}</span>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                  <Icon name="LogOut" size={16} className="mr-2" />
+                  Выйти
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => setIsAuthModalOpen(true)}>
+                <Icon name="User" size={20} className="mr-2" />
+                Войти
+              </Button>
+            )}
+          </div>
+          <h1 className="text-6xl font-black mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">KEY WORLD</h1>
           <p className="text-xl text-muted-foreground">Найди ключ, открой дверь, сбеги из комнаты!</p>
         </div>
 
