@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Joystick } from './Joystick';
 
 interface GameObject {
   x: number;
@@ -23,6 +24,12 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
   const [player, setPlayer] = useState({ x: 50, y: 50 });
   const [keyCollected, setKeyCollected] = useState(false);
   const [gameObjects, setGameObjects] = useState(level.objects);
+  const [joystickDirection, setJoystickDirection] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,46 +62,27 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
     });
 
     ctx.fillStyle = playerSkin;
+    ctx.fillRect(player.x - 15, player.y - 25, 30, 50);
     ctx.beginPath();
-    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+    ctx.arc(player.x, player.y - 35, 15, 0, Math.PI * 2);
     ctx.fill();
   }, [player, gameObjects, keyCollected, playerSkin]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const speed = 5;
-      let newX = player.x;
-      let newY = player.y;
-
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-          newY -= speed;
-          break;
-        case 'ArrowDown':
-        case 's':
-          newY += speed;
-          break;
-        case 'ArrowLeft':
-        case 'a':
-          newX -= speed;
-          break;
-        case 'ArrowRight':
-        case 'd':
-          newX += speed;
-          break;
-      }
+    const movePlayer = (deltaX: number, deltaY: number) => {
+      const newX = player.x + deltaX;
+      const newY = player.y + deltaY;
 
       const collisionWithWall = gameObjects.some(
         (obj) =>
           (obj.type === 'wall' || obj.type === 'obstacle') &&
-          newX + 20 > obj.x &&
-          newX - 20 < obj.x + obj.width &&
-          newY + 20 > obj.y &&
-          newY - 20 < obj.y + obj.height
+          newX + 15 > obj.x &&
+          newX - 15 < obj.x + obj.width &&
+          newY + 25 > obj.y &&
+          newY - 35 < obj.y + obj.height
       );
 
-      if (!collisionWithWall && newX >= 20 && newX <= 580 && newY >= 20 && newY <= 380) {
+      if (!collisionWithWall && newX >= 15 && newX <= 585 && newY >= 35 && newY <= 375) {
         setPlayer({ x: newX, y: newY });
 
         gameObjects.forEach((obj, index) => {
@@ -124,16 +112,103 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const speed = 5;
+
+      switch (e.key.toLowerCase()) {
+        case 'arrowup':
+        case 'w':
+          movePlayer(0, -speed);
+          break;
+        case 'arrowdown':
+        case 's':
+          movePlayer(0, speed);
+          break;
+        case 'arrowleft':
+        case 'a':
+          movePlayer(-speed, 0);
+          break;
+        case 'arrowright':
+        case 'd':
+          movePlayer(speed, 0);
+          break;
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [player, gameObjects, keyCollected, onLevelComplete]);
 
+  useEffect(() => {
+    if (joystickDirection.x === 0 && joystickDirection.y === 0) return;
+
+    const interval = setInterval(() => {
+      const speed = 3;
+      const deltaX = joystickDirection.x * speed;
+      const deltaY = joystickDirection.y * speed;
+      
+      const newX = player.x + deltaX;
+      const newY = player.y + deltaY;
+
+      const collisionWithWall = gameObjects.some(
+        (obj) =>
+          (obj.type === 'wall' || obj.type === 'obstacle') &&
+          newX + 15 > obj.x &&
+          newX - 15 < obj.x + obj.width &&
+          newY + 25 > obj.y &&
+          newY - 35 < obj.y + obj.height
+      );
+
+      if (!collisionWithWall && newX >= 15 && newX <= 585 && newY >= 35 && newY <= 375) {
+        setPlayer({ x: newX, y: newY });
+
+        gameObjects.forEach((obj, index) => {
+          if (obj.type === 'key' && !obj.collected) {
+            const distance = Math.sqrt(
+              Math.pow(newX - (obj.x + obj.width / 2), 2) + Math.pow(newY - (obj.y + obj.height / 2), 2)
+            );
+            if (distance < 35) {
+              setKeyCollected(true);
+              setGameObjects((prev) => {
+                const updated = [...prev];
+                updated[index] = { ...updated[index], collected: true };
+                return updated;
+              });
+            }
+          }
+
+          if (obj.type === 'door' && keyCollected) {
+            const distance = Math.sqrt(
+              Math.pow(newX - (obj.x + obj.width / 2), 2) + Math.pow(newY - (obj.y + obj.height / 2), 2)
+            );
+            if (distance < 50) {
+              onLevelComplete();
+            }
+          }
+        });
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [joystickDirection, player, gameObjects, keyCollected, onLevelComplete]);
+
   return (
-    <div className="relative">
-      <canvas ref={canvasRef} width={600} height={400} className="border-4 border-primary rounded-lg shadow-2xl" />
-      <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold">
-        {keyCollected ? '🔑 Ключ собран!' : '🎯 Найди ключ'}
+    <div className="flex flex-col items-center gap-6">
+      <div className="relative">
+        <canvas ref={canvasRef} width={600} height={400} className="border-4 border-primary rounded-lg shadow-2xl" />
+        <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold">
+          {keyCollected ? '🔑 Ключ собран!' : '🎯 Найди ключ'}
+        </div>
       </div>
+      {isMobile && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-sm text-muted-foreground">Управляй джойстиком</p>
+          <Joystick onMove={setJoystickDirection} />
+        </div>
+      )}
+      {!isMobile && (
+        <p className="text-muted-foreground">Управление: W/A/S/D или стрелки</p>
+      )}
     </div>
   );
 };
