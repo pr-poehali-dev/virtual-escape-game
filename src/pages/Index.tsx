@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { LevelCard } from '@/components/LevelCard';
 import { SkinCard } from '@/components/SkinCard';
 import { GameCanvas } from '@/components/GameCanvas';
@@ -80,6 +82,14 @@ const Index = () => {
   const [levels, setLevels] = useState(INITIAL_LEVELS);
   const [customLevels, setCustomLevels] = useState<any[]>([]);
   const [editorObjects, setEditorObjects] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [communityLevels] = useState([
+    { id: 101, name: 'Лабиринт судьбы', difficulty: 3, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'Player_123', objects: [] },
+    { id: 102, name: 'Тёмная комната', difficulty: 2, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'MasterEscape', objects: [] },
+    { id: 103, name: 'Испытание огнём', difficulty: 3, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'ProGamer', objects: [] },
+    { id: 104, name: 'Комната загадок', difficulty: 1, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'NoobMaster', objects: [] },
+    { id: 105, name: 'Подземелье', difficulty: 2, image: 'https://v3b.fal.media/files/b/zebra/9of2d78_G1F1egSaGUhgV_output.png', completed: false, author: 'DarkKnight', objects: [] },
+  ]);
 
   const handlePlayLevel = (levelId: number) => {
     setCurrentLevel(levelId);
@@ -170,18 +180,55 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="menu" className="space-y-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-6">Уровни разработчика</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {levels.map((level) => (
-                  <LevelCard key={level.id} level={level} onPlay={() => handlePlayLevel(level.id)} />
-                ))}
-              </div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold">Уровни разработчика</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
+                    <Icon name="Users" size={20} className="mr-2" />
+                    Уровни игроков
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold">Пользовательские уровни</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Поиск уровней по названию..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {communityLevels
+                        .filter((level) => level.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map((level) => (
+                          <LevelCard key={level.id} level={level} onPlay={() => handlePlayLevel(level.id)} />
+                        ))}
+                    </div>
+                    {communityLevels.filter((level) => level.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Icon name="SearchX" size={48} className="mx-auto mb-4" />
+                        <p>Уровни не найдены</p>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {levels.map((level) => (
+                <LevelCard key={level.id} level={level} onPlay={() => handlePlayLevel(level.id)} />
+              ))}
             </div>
 
             {customLevels.length > 0 && (
               <div>
-                <h2 className="text-3xl font-bold mb-6">Пользовательские уровни</h2>
+                <h2 className="text-3xl font-bold mb-6">Мои уровни</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {customLevels.map((level) => (
                     <LevelCard key={level.id} level={level} onPlay={() => handlePlayLevel(level.id)} />
