@@ -26,9 +26,45 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
   const [gameObjects, setGameObjects] = useState(level.objects);
   const [joystickDirection, setJoystickDirection] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const keyCollectSoundRef = useRef<HTMLAudioElement | null>(null);
+  const doorOpenSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    const createBeep = (frequency: number, duration: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    };
+
+    keyCollectSoundRef.current = {
+      play: () => {
+        createBeep(800, 0.2);
+        setTimeout(() => createBeep(1000, 0.15), 100);
+      }
+    } as any;
+
+    doorOpenSoundRef.current = {
+      play: () => {
+        createBeep(600, 0.3);
+        setTimeout(() => createBeep(400, 0.2), 150);
+        setTimeout(() => createBeep(500, 0.25), 300);
+      }
+    } as any;
   }, []);
 
   useEffect(() => {
@@ -48,10 +84,23 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
         ctx.fillStyle = '#4A5568';
         ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
       } else if (obj.type === 'key' && !obj.collected) {
-        ctx.fillStyle = '#FFE66D';
+        const keyX = obj.x + obj.width / 2;
+        const keyY = obj.y + obj.height / 2;
+        
+        ctx.fillStyle = '#FFD700';
+        ctx.strokeStyle = '#B8860B';
+        ctx.lineWidth = 2;
+        
         ctx.beginPath();
-        ctx.arc(obj.x + obj.width / 2, obj.y + obj.height / 2, 15, 0, Math.PI * 2);
+        ctx.arc(keyX, keyY - 8, 6, 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
+        
+        ctx.fillRect(keyX - 2, keyY - 2, 4, 12);
+        ctx.strokeRect(keyX - 2, keyY - 2, 4, 12);
+        
+        ctx.fillRect(keyX - 2, keyY + 8, 6, 2);
+        ctx.strokeRect(keyX - 2, keyY + 8, 6, 2);
       } else if (obj.type === 'door') {
         ctx.fillStyle = keyCollected ? '#FECDC4' : '#FF6B35';
         ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
@@ -92,6 +141,7 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
             );
             if (distance < 35) {
               setKeyCollected(true);
+              keyCollectSoundRef.current?.play();
               setGameObjects((prev) => {
                 const updated = [...prev];
                 updated[index] = { ...updated[index], collected: true };
@@ -105,7 +155,8 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
               Math.pow(newX - (obj.x + obj.width / 2), 2) + Math.pow(newY - (obj.y + obj.height / 2), 2)
             );
             if (distance < 50) {
-              onLevelComplete();
+              doorOpenSoundRef.current?.play();
+              setTimeout(() => onLevelComplete(), 300);
             }
           }
         });
@@ -169,6 +220,7 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
             );
             if (distance < 35) {
               setKeyCollected(true);
+              keyCollectSoundRef.current?.play();
               setGameObjects((prev) => {
                 const updated = [...prev];
                 updated[index] = { ...updated[index], collected: true };
@@ -182,7 +234,8 @@ export const GameCanvas = ({ level, playerSkin, onLevelComplete }: GameCanvasPro
               Math.pow(newX - (obj.x + obj.width / 2), 2) + Math.pow(newY - (obj.y + obj.height / 2), 2)
             );
             if (distance < 50) {
-              onLevelComplete();
+              doorOpenSoundRef.current?.play();
+              setTimeout(() => onLevelComplete(), 300);
             }
           }
         });

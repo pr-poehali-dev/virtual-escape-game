@@ -7,6 +7,7 @@ import { LevelCard } from '@/components/LevelCard';
 import { SkinCard } from '@/components/SkinCard';
 import { GameCanvas } from '@/components/GameCanvas';
 import { AuthModal } from '@/components/AuthModal';
+import { LevelEditor } from '@/components/LevelEditor';
 import Icon from '@/components/ui/icon';
 
 const INITIAL_LEVELS = [
@@ -172,17 +173,6 @@ const Index = () => {
     setActiveTab('menu');
   };
 
-  const addObjectToEditor = (type: string) => {
-    const newObject = {
-      x: 100,
-      y: 100,
-      width: type === 'key' ? 30 : type === 'door' ? 60 : 100,
-      height: type === 'key' ? 30 : type === 'door' ? 80 : 20,
-      type: type as 'wall' | 'key' | 'door' | 'obstacle',
-    };
-    setEditorObjects([...editorObjects, newObject]);
-  };
-
   const saveCustomLevel = () => {
     const newLevel = {
       id: levels.length + customLevels.length + 1,
@@ -328,57 +318,11 @@ const Index = () => {
 
           <TabsContent value="editor">
             <h2 className="text-3xl font-bold mb-6">Редактор уровней</h2>
-            <div className="grid lg:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="bg-card p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-4">Добавить объекты</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button onClick={() => addObjectToEditor('key')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                      <Icon name="Key" size={20} className="mr-2" />
-                      Ключ
-                    </Button>
-                    <Button onClick={() => addObjectToEditor('door')} className="bg-primary hover:bg-primary/90">
-                      <Icon name="DoorOpen" size={20} className="mr-2" />
-                      Дверь
-                    </Button>
-                    <Button onClick={() => addObjectToEditor('obstacle')} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                      <Icon name="Box" size={20} className="mr-2" />
-                      Препятствие
-                    </Button>
-                    <Button onClick={() => addObjectToEditor('wall')} className="bg-muted hover:bg-muted/90 text-muted-foreground">
-                      <Icon name="Minus" size={20} className="mr-2" />
-                      Стена
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-card p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-4">Объекты в уровне: {editorObjects.length}</h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {editorObjects.map((obj, index) => (
-                      <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
-                        <span className="text-sm">{obj.type === 'key' ? '🔑 Ключ' : obj.type === 'door' ? '🚪 Дверь' : obj.type === 'wall' ? '🧱 Стена' : '📦 Препятствие'}</span>
-                        <Button size="sm" variant="ghost" onClick={() => setEditorObjects(editorObjects.filter((_, i) => i !== index))}>
-                          <Icon name="Trash2" size={16} />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Button onClick={saveCustomLevel} disabled={editorObjects.length === 0} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Icon name="Save" size={20} className="mr-2" />
-                  Сохранить уровень
-                </Button>
-              </div>
-
-              <div className="bg-card p-6 rounded-lg">
-                <h3 className="text-xl font-bold mb-4">Предпросмотр</h3>
-                <div className="bg-[#2C3E50] w-full aspect-[3/2] rounded-lg flex items-center justify-center text-white">
-                  <p>Редактор уровней (добавь объекты слева)</p>
-                </div>
-              </div>
-            </div>
+            <LevelEditor 
+              objects={editorObjects} 
+              onObjectsChange={setEditorObjects}
+              onSave={saveCustomLevel}
+            />
           </TabsContent>
         </Tabs>
       </div>
